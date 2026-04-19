@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NMU Deprescribing E-Learning Tool</title>
+
+<style>
+  :root{
+    --purple:#5a2d82;
+    --purple-dark:#452066;
+    --bg:#f4f2f8;
+    --card:#ffffff;
+    --ink:#1f1f1f;
+    --hint:#f3effa;
+  }
+
+  body{
+    font-family: Arial, sans-serif;
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.45;
+  }
+
+  .header{
+    background:var(--purple);
+    color:#fff;
+    padding:18px 20px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+  }
+
+  .logo{
+    width:130px;
+    height:58px;
+    background:#fff;
+    color:var(--purple);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    border-radius:8px;
+    letter-spacing:0.5px;
+    user-select:none;
+  }
+
+  .header h1{
+    margin:0;
+    font-size:22px;
+  }
+
+  .container{
+    padding:26px;
+    max-width:1050px;
+    margin:0 auto;
+  }
+
+  .page{
+    display:none;
+  }
+
+  .page.active{
+    display:block;
+  }
+
+  .card{
+    background:var(--card);
+    border-radius:14px;
+    padding:22px;
+    margin-bottom:22px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.08);
+  }
+
+  h2{
+    color:var(--purple);
+    margin:0 0 10px 0;
+    font-size:20px;
+  }
+
+  h3{
+    color:var(--purple);
+    margin-top:18px;
+  }
+
+  .subtle{
+    color:#444;
+    margin:6px 0 0 0;
+  }
+
+  .meta{
+    background:var(--hint);
+    border-left:4px solid var(--purple);
+    padding:10px 12px;
+    border-radius:10px;
+    margin:12px 0 14px 0;
+  }
+
+  .q{
+    padding-top:14px;
+    margin-top:14px;
+    border-top:1px solid #e7e2ef;
+  }
+
+  .q:first-of-type{
+    border-top:none;
+    padding-top:0;
+    margin-top:0;
+  }
+
+  .qtitle{
+    font-weight:700;
+    margin:0 0 8px 0;
+  }
+
+  label{
+    display:block;
+    margin:6px 0;
+  }
+
+  button{
+    background:var(--purple);
+    color:#fff;
+    border:none;
+    padding:9px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    margin-top:8px;
+    font-weight:600;
+  }
+
+  button:hover{
+    background:var(--purple-dark);
+  }
+
+  .feedback{
+    margin-top:10px;
+    padding:10px 12px;
+    border-left:4px solid var(--purple);
+    background:var(--hint);
+    border-radius:10px;
+    display:none;
+  }
+
+  .scoreRow{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    margin-top:16px;
+    flex-wrap:wrap;
+  }
+
+  .scoreBox{
+    font-weight:800;
+    color:var(--purple);
+  }
+
+  .small{
+    font-size:13px;
+    color:#555;
+  }
+
+  .navRow{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    margin-top:20px;
+    flex-wrap:wrap;
+  }
+
+  .centered{
+    text-align:center;
+    padding:50px 20px;
+  }
+
+  .hero-title{
+    font-size:32px;
+    color:var(--purple);
+    margin-bottom:12px;
+  }
+
+  .hero-subtitle{
+    font-size:20px;
+    color:#444;
+    margin-bottom:8px;
+  }
+
+  .hero-author{
+    font-size:18px;
+    color:#666;
+  }
+
+  .intro-box{
+    background:var(--hint);
+    border-radius:12px;
+    padding:16px;
+    margin:14px 0;
+  }
+
+  .oncpal-img{
+    width:100%;
+    max-width:760px;
+    border:1px solid #ddd;
+    border-radius:10px;
+    display:block;
+    margin:18px auto;
+    box-shadow:0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  .acb-link{
+    display:inline-block;
+    margin-top:10px;
+    color:var(--purple);
+    font-weight:700;
+    text-decoration:none;
+  }
+
+  .acb-link:hover{
+    text-decoration:underline;
+  }
+
+  ul{
+    padding-left:22px;
+  }
+</style>
+
+<script>
+  const scores = {};
+  let currentPage = 1;
+  const totalPages = 4;
+
+  function showFeedback(id, html){
+    const el = document.getElementById(id);
+    el.style.display = "block";
+    el.innerHTML = html;
+  }
+
+  function getSelectedRadio(name){
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    return el ? el.value : null;
+  }
+
+  function getSelectedCheckboxes(name){
+    return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(x => x.value);
+  }
+
+  function arraysEqualAsSets(a, b){
+    const A = new Set(a), B = new Set(b);
+    if (A.size !== B.size) return false;
+    for (const v of A) if (!B.has(v)) return false;
+    return true;
+  }
+
+  function checkRadio(qKey, groupName, correctValue, fbId, correctHtml, incorrectHtml){
+    const selected = getSelectedRadio(groupName);
+    if (!selected){
+      showFeedback(fbId, "Please select an answer.");
+      scores[qKey] = 0;
+      return;
+    }
+    const ok = selected === correctValue;
+    scores[qKey] = ok ? 1 : 0;
+    showFeedback(fbId, ok ? correctHtml : incorrectHtml);
+  }
+
+  function checkCheckbox(qKey, groupName, correctValues, fbId, correctHtml, incorrectHtml){
+    const selected = getSelectedCheckboxes(groupName);
+    if (selected.length === 0){
+      showFeedback(fbId, "Please select at least one option.");
+      scores[qKey] = 0;
+      return;
+    }
+    const ok = arraysEqualAsSets(selected, correctValues);
+    scores[qKey] = ok ? 1 : 0;
+    showFeedback(fbId, ok ? correctHtml : incorrectHtml);
+  }
+
+  function calcCase(casePrefix, numQuestions, scoreId){
+    let total = 0;
+    for (let i=1; i<=numQuestions; i++){
+      total += (scores[casePrefix + i] || 0);
+    }
+    document.getElementById(scoreId).textContent = `Score: ${total} / ${numQuestions}`;
+  }
+
+  function showPage(pageNumber){
+    const pages = document.querySelectorAll('.page');
+    pages.forEach(page => page.classList.remove('active'));
+    document.getElementById(`page-${pageNumber}`).classList.add('active');
+    currentPage = pageNumber;
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+
+  function nextPage(){
+    if(currentPage < totalPages){
+      showPage(currentPage + 1);
+    }
+  }
+
+  function prevPage(){
+    if(currentPage > 1){
+      showPage(currentPage - 1);
+    }
+  }
+
+  window.onload = function(){
+    showPage(1);
+  };
+</script>
+</head>
+
+<body>
+  <div class="header">
+    <div class="logo">UHDB</div>
+    <h1>NMU Deprescribing E-Learning Tool</h1>
+  </div>
+
+  <div class="container">
+
+    <!-- ===================== PAGE 1 ===================== -->
+    <div class="page active" id="page-1">
+      <div class="card centered">
+        <div class="hero-title">Palliative Medicine Deprescribing Tool</div>
+        <div class="hero-subtitle">Interactive case-based learning for deprescribing in advanced illness</div>
+        <div class="hero-author">Created by Dr Talha Raza</div>
+
+        <div class="intro-box" style="max-width:700px; margin:30px auto 0 auto;">
+          <p>This tool is designed to support clinicians in applying deprescribing principles in patients <b>approaching the end of their life.</b></p>
+          <p>You will first review key learning points on deprescribing and anticholinergic burden before working through <b>realistic case scenarios.</b></p>
+        </div>
+
+        <div class="navRow" style="justify-content:center;">
+          <button onclick="nextPage()">Next</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== PAGE 2 ===================== -->
+    <div class="page" id="page-2">
+      <div class="card">
+        <h2>Deprescribing in Palliative Care</h2>
+
+        <div class="intro-box">
+          <p><b>Deprescribing</b> is the planned reduction or stopping of medications that may no longer provide meaningful benefit, may cause harm, or no longer align with a patient’s goals of care.</p>
+        </div>
+
+        <h3>Why deprescribe?</h3>
+        <p>In patients with limited prognosis, many preventative medications have a <b>time-to-benefit</b> that exceeds life expectancy. Continuing these treatments can increase pill burden, adverse drug reactions, treatment complexity, and medication-related harm.</p>
+
+        <h3>Key principles</h3>
+        <ul>
+          <li>Review whether the medicine offers <b>short-term symptomatic benefit</b>.</li>
+          <li>Consider whether the medication aligns with the patient’s <b>current goals of care</b>.</li>
+          <li>Assess whether the <b>time-to-benefit exceeds prognosis</b>.</li>
+          <li>Prioritise comfort, function, and minimising medication burden.</li>
+        </ul>
+
+        <h3>OncPal guideline: common medications of limited benefit</h3>
+        <p>The OncPal deprescribing guideline highlights several drug classes that may have limited benefit in advanced cancer and palliative care settings, depending on indication and prognosis.</p>
+
+        <img src="oncpal-guideline.png" alt="OncPal guideline table" class="oncpal-img">
+
+        <div class="meta">
+          <b>Examples commonly considered for review:</b><br>
+          Statins, fibrates, ezetimibe, antihypertensives in mild-moderate hypertension, proton pump inhibitors without clear indication, oral hypoglycaemics used for prevention of long-term complications, osteoporosis medications, vitamins, minerals, and complementary therapies.
+        </div>
+
+        <div class="navRow">
+          <button onclick="prevPage()">Previous</button>
+          <button onclick="nextPage()">Next</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== PAGE 3 ===================== -->
+    <div class="page" id="page-3">
+      <div class="card">
+        <h2>Anticholinergic Burden (ACB): Why it matters?</h2>
+
+        <div class="intro-box">
+          <p><b>Anticholinergic burden</b> refers to the cumulative effect of taking one or more medicines with anticholinergic activity.</p>
+        </div>
+
+        <h3>Why it matters in palliative care</h3>
+        <p>Anticholinergic medications may worsen:</p>
+        <ul>
+          <li>Delirium</li>
+          <li>Cognitive impairment</li>
+          <li>Falls risk</li>
+          <li>Constipation</li>
+          <li>Urinary retention</li>
+          <li>Dry mouth and sedation</li>
+        </ul>
+
+        <h3>How ACB scoring works</h3>
+        <ul>
+          <li><b>Score 1</b> – possible anticholinergic effects</li>
+          <li><b>Score 2</b> – definite anticholinergic effects</li>
+          <li><b>Score 3</b> – marked anticholinergic effects</li>
+        </ul>
+
+        <div class="meta">
+          <b>Clinical significance:</b> a total ACB score of <b>3 or more</b> is generally considered clinically significant and is associated with increased risk of confusion, falls, and poorer functional outcomes.
+        </div>
+
+        <h3>Common examples</h3>
+        <ul>
+          <li>Amitriptyline – 3</li>
+          <li>Oxybutynin – 3</li>
+          <li>Diphenhydramine – 3</li>
+          <li>Lorazepam – 1</li>
+          <li>Morphine – 1</li>
+        </ul>
+
+        <p>For more detailed ACB information and individual medication scores, use the calculator below:</p>
+        <a class="acb-link" href="https://www.acbcalc.com/" target="_blank">Open ACB Calculator</a>
+
+        <div class="navRow">
+          <button onclick="prevPage()">Previous</button>
+          <button onclick="nextPage()">Next</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== PAGE 4 ===================== -->
+    <div class="page" id="page-4">
+
+      <!-- ===================== CASE A ===================== -->
+      <div class="card">
+        <h2>Case A – Preventative Treatments</h2>
+        <p class="subtle"><b>Ms C, 69</b> – Metastatic breast cancer (lung), prognosis &lt; 6 months.</p>
+        <div class="meta">
+          <div><b>PMH:</b> Recent PE (4 weeks ago), AF, HTN, IHD (NSTEMI 3 years ago), recurrent UTI, peripheral neuropathy. Stopped dexamethasone 2/52 ago.</div>
+          <div><b>Heart rhythm:</b> Irregularly irregular, HR 110</div>
+          <div><b>Goal:</b> Attend granddaughter’s wedding in 2 weeks</div>
+          <div><b>Medication chart:</b> Atorvastatin 80mg | Apixaban | Bisoprolol | Ramipril | Zoledronic acid | Amitriptyline | Zopiclone | Oxycodone | Nitrofurantoin | Omeprazole</div>
+        </div>
+
+        <div class="q">
+          <p class="qtitle">Q1 – Which medications should be considered for deprescribing in this patient?</p>
+          <div class="small">Select all that apply.</div>
+
+          <label><input type="checkbox" name="A1" value="atorvastatin"> Atorvastatin</label>
+          <label><input type="checkbox" name="A1" value="apixaban"> Apixaban</label>
+          <label><input type="checkbox" name="A1" value="bisoprolol"> Bisoprolol</label>
+          <label><input type="checkbox" name="A1" value="zoledronic"> Zoledronic acid</label>
+          <label><input type="checkbox" name="A1" value="amitriptyline"> Amitriptyline</label>
+          <label><input type="checkbox" name="A1" value="zopiclone"> Zopiclone</label>
+          <label><input type="checkbox" name="A1" value="oxycodone"> Oxycodone MR</label>
+          <label><input type="checkbox" name="A1" value="nitrofurantoin"> Nitrofurantoin</label>
+          <label><input type="checkbox" name="A1" value="omeprazole"> Omeprazole</label>
+
+          <button onclick="checkCheckbox('A1','A1',['atorvastatin','zoledronic','omeprazole'],'A1fb',
+            '<b>Correct.</b><br>Atorvastatin provides long-term cardiovascular prevention benefit unlikely to accrue within a 2–4 month prognosis. Zoledronic acid reduces skeletal-related events over months–years and is unlikely to provide meaningful short-term benefit while adding treatment burden. Omeprazole offers limited short-term benefit without active GI risk and contributes to pill burden. <br><span class=&quot;small&quot;>Apixaban remains indicated due to recent PE; bisoprolol is required for AF rate control (goal: function for wedding).</span>',
+            '<b>Not quite.</b><br>Re-check time-to-benefit and treatment burden. Consider that anticoagulation remains indicated after a recent PE, and rate control may be necessary for functional goals.' );">
+            Submit
+          </button>
+          <div id="A1fb" class="feedback"></div>
+        </div>
+
+        <div class="q">
+          <p class="qtitle">Q2 – What is Ms C’s total Anticholinergic Cognitive Burden (ACB) score?</p>
+
+          <label><input type="radio" name="A2" value="5"> A. 5</label>
+          <label><input type="radio" name="A2" value="6"> B. 6</label>
+          <label><input type="radio" name="A2" value="3"> C. 3</label>
+
+          <button onclick="checkRadio('A2','A2','5','A2fb',
+            '<b>Correct (ACB = 5).</b><br>Amitriptyline contributes the highest burden (3), with zopiclone (1) and omeprazole (1) adding additional low-level anticholinergic effects. A total score ≥3 is clinically significant (delirium/falls/cognitive impairment), relevant to her goal of maintaining function for the wedding.',
+            '<b>Incorrect.</b><br>Recalculate: amitriptyline (3) + zopiclone (1) + omeprazole (1) = 5.' );">
+            Submit
+          </button>
+          <div id="A2fb" class="feedback"></div>
+        </div>
+
+        <div class="q">
+          <p class="qtitle">Q3 – What does RCT evidence show about stopping statins in patients with limited life expectancy?</p>
+
+          <label><input type="radio" name="A3" value="A"> A. Stopping statins increases short-term mortality.</label>
+          <label><input type="radio" name="A3" value="B"> B. Stopping statins does not increase short-term mortality and may improve quality of life.</label>
+          <label><input type="radio" name="A3" value="C"> C. Statins provide short-term plaque stabilisation benefits within weeks.</label>
+
+          <button onclick="checkRadio('A3','A3','B','A3fb',
+            '<b>Correct.</b><br>A pragmatic RCT in patients with advanced life-limiting illness showed no significant difference in short-term mortality when statins were discontinued, with improved quality of life and reduced pill burden in the deprescribing group.',
+            '<b>Incorrect.</b><br>Evidence supports that discontinuation does not increase short-term mortality and may improve QoL in advanced life-limiting illness.' );">
+            Submit
+          </button>
+          <div id="A3fb" class="feedback"></div>
+        </div>
+
+        <div class="scoreRow">
+          <button onclick="calcCase('A',3,'Ascore')">Calculate Case A Score</button>
+          <div id="Ascore" class="scoreBox"></div>
+          <div class="small">Tip: Submit each question first, then calculate the case score.</div>
+        </div>
+      </div>
+
+      <!-- ===================== CASE B ===================== -->
+      <div class="card">
+        <h2>Case B – Diabetes</h2>
+        <p class="subtle"><b>Mr A, 78</b> – Metastatic prostate cancer, life expectancy &lt; 6 months.</p>
+
+        <div class="meta">
+          <div><b>PMH:</b> Advanced heart failure (NYHA III–IV), angina, T2DM with recurrent hypoglycaemic episodes, CKD 4</div>
+          <div><b>BP:</b> 120/85</div>
+          <div><b>Medication chart:</b> Metformin | Pioglitazone | Pregabalin | Buprenorphine patch | Atorvastatin | Ramipril | Furosemide | Aspirin</div>
+        </div>
+
+        <div class="q">
+          <p class="qtitle">Q1 – Deprescribing targets: Which medications should be considered for deprescribing in this patient?</p>
+          <div class="small">Select all that apply.</div>
+
+          <label><input type="checkbox" name="B1" value="metformin"> Metformin</label>
+          <label><input type="checkbox" name="B1" value="pioglitazone"> Pioglitazone</label>
+          <label><input type="checkbox" name="B1" value="pregabalin"> Pregabalin</label>
+          <label><input type="checkbox" name="B1" value="buprenorphine"> Buprenorphine patch</label>
+          <label><input type="checkbox" name="B1" value="atorvastatin"> Atorvastatin</label>
+          <label><input type="checkbox" name="B1" value="ramipril"> Ramipril</label>
+          <label><input type="checkbox" name="B1" value="furosemide"> Furosemide</label>
+          <label><input type="checkbox" name="B1" value="aspirin"> Aspirin</label>
+
+          <button onclick="checkCheckbox('B1','B1',['metformin','pioglitazone','atorvastatin','ramipril','aspirin'],'B1fb',
+            '<b>Correct.</b><br>With life expectancy &lt;6 months and recurrent hypoglycaemia, tight glycaemic control is no longer appropriate, so metformin and pioglitazone should be reviewed. Pioglitazone is contraindicated in heart failure (fluid retention/worsening decompensation). Ramipril may increase hypotension/renal risk in advanced HF and CKD 4 with limited short-term benefit. Aspirin offers minimal benefit within this prognosis and increases bleeding risk. Atorvastatin is long-term prevention with delayed time-to-benefit.',
+            '<b>Not quite.</b><br>Think prognosis and harm-stacking: HF contraindications (pioglitazone), hypoglycaemia risk, CKD4/renal risk, and delayed time-to-benefit for preventive drugs.' );">
+            Submit
+          </button>
+          <div id="B1fb" class="feedback"></div>
+        </div>
+
+        <div class="q">
+          <p class="qtitle">Q2 – ACB calculation: What is Mr A’s Anticholinergic Cognitive Burden (ACB) score?</p>
+
+          <label><input type="radio" name="B2" value="1"> 1</label>
+          <label><input type="radio" name="B2" value="2"> 2</label>
+          <label><input type="radio" name="B2" value="3"> 3</label>
+
+          <button onclick="checkRadio('B2','B2','1','B2fb',
+            '<b>Correct (ACB = 1).</b><br>Metformin scores 1 in this tool’s ACB mapping; overall burden is low compared with typical NMU anticholinergic drivers.',
+            '<b>Incorrect.</b><br>Expected ACB score here is 1.' );">
+            Submit
+          </button>
+          <div id="B2fb" class="feedback"></div>
+        </div>
+
+        <div class="q">
+          <p class="qtitle">Q3 – In a frail older adult with limited prognosis, which statement aligns with NICE guidance on glycaemic management?</p>
+
+          <label><input type="radio" name="B3" value="A"> A. Continue tight glycaemic targets to prevent long-term microvascular complications</label>
+          <label><input type="radio" name="B3" value="B"> B. Relax glucose targets, prioritise avoidance of hypoglycaemia, and review all hypoglycaemic medications</label>
+          <label><input type="radio" name="B3" value="C"> C. Stop all diabetes medications immediately regardless of symptoms</label>
+          <label><input type="radio" name="B3" value="D"> D. Switch all oral hypoglycaemic drugs to injectable insulin to maintain control</label>
+
+          <button onclick="checkRadio('B3','B3','B','B3fb',
+            '<b>Correct.</b><br>Evidence supports higher glucose targets (e.g. 7–15 mmol/L) in people with limited life expectancy to minimise hypoglycaemia. Tight targets have delayed benefits (years) and do not improve survival in this context.',
+            '<b>Incorrect.</b><br>The priority is avoiding hypoglycaemia and reducing treatment burden; relax targets and review hypoglycaemic agents.' );">
+            Submit
+          </button>
+          <div id="B3fb" class="feedback"></div>
+        </div>
+
+        <div class="scoreRow">
+          <button onclick="calcCase('B',3,'Bscore')">Calculate Case B Score</button>
+          <div id="Bscore" class="scoreBox"></div>
+        </div>
+      </div>
+
+      <!-- ===================== CASE C ===================== -->
+      <div class="card">
+        <h2>Case C – Recognised Dying</h2>
+
+        <div class="meta">
+          <div><b>Patient:</b> Mr C, 85</div>
+          <div><b>Context:</b> ILD; increasing drowsiness, minimal oral intake</div>
+          <div><b>PMH:</b> Asthma, angina, oesophagitis, osteoporosis</div>
+          <div><b>Medications:</b> Salbutamol inhaler | GTN spray | Calcium + Vitamin D | Alendronic acid weekly | Morphine MR | Atorvastatin | Folic acid | Famotidine</div>
+        </div>
+
+        <div class="q">
+          <p class="qtitle">Q1 – Deprescribing targets: Which medications could be considered for deprescribing?</p>
+          <div class="small">Select all that apply.</div>
+
+          <label><input type="checkbox" name="C1" value="salbutamol"> Salbutamol inhaler</label>
+          <label><input type="checkbox" name="C1" value="gtn"> GTN spray</label>
+          <label><input type="checkbox" name="C1" value="calcium"> Calcium + Vitamin D</label>
+          <label><input type="checkbox" name="C1" value="alendronic"> Alendronic acid weekly</label>
+          <label><input type="checkbox" name="C1" value="morphine"> Morphine MR 40mg BD</label>
+          <label><input type="checkbox" name="C1" value="atorvastatin"> Atorvastatin</label>
+          <label><input type="checkbox" name="C1" value="folic"> Folic acid</label>
+          <label><input type="checkbox" name="C1" value="famotidine"> Famotidine</label>
+
+          <button onclick="checkCheckbox('C1','C1',['calcium','alendronic','atorvastatin','folic','famotidine'],'C1fb',
+            '<b>Correct.</b><br>With unsafe swallow/recognised dying, review oral medicines. Long-term preventive meds (statins, bisphosphonates) have delayed benefit; calcium + Vit D provides minimal short-term fracture protection. Folic acid and famotidine generally do not contribute to comfort and add pill burden. <br><span class=&quot;small&quot;>GTN may still be retained PRN for distressing angina if it can be administered; morphine should be converted to non-oral route if needed.</span>',
+            '<b>Not quite.</b><br>Focus on unsafe swallow + time-to-benefit. Keep symptom-control plans (e.g., convert opioids to non-oral routes). GTN is not automatically a deprescribing target if it supports comfort PRN.' );">
+            Submit
+          </button>
+          <div id="C1fb" class="feedback"></div>
+        </div>
+
+        <div class="q">
+          <p class="qtitle">Q2 – ACB calculation: What is Mr C’s ACB score?</p>
+
+          <label><input type="radio" name="C2" value="0"> 0</label>
+          <label><input type="radio" name="C2" value="1"> 1</label>
+          <label><input type="radio" name="C2" value="2"> ≥2</label>
+
+          <button onclick="checkRadio('C2','C2','1','C2fb',
+            '<b>Correct (ACB = 1).</b><br>Morphine = 1 in this tool’s ACB mapping.',
+            '<b>Incorrect.</b><br>Expected ACB score is 1 (morphine = 1).' );">
+            Submit
+          </button>
+          <div id="C2fb" class="feedback"></div>
+        </div>
+
+        <div class="q">
+          <p class="qtitle">Q3 – Literature-based: Evidence for stopping preventive medications in frail older adults:</p>
+
+          <label><input type="radio" name="C3" value="A"> Reduces pill burden without increasing mortality</label>
+          <label><input type="radio" name="C3" value="B"> Worsens survival</label>
+          <label><input type="radio" name="C3" value="C"> Increases hospital admissions</label>
+          <label><input type="radio" name="C3" value="D"> Causes rapid osteoporosis</label>
+
+          <button onclick="checkRadio('C3','C3','A','C3fb',
+            '<b>Correct.</b><br>Literature supports deprescribing non-essential meds near end of life to reduce pill burden and focus on comfort, without increasing mortality.',
+            '<b>Incorrect.</b><br>Best supported statement: reduced pill burden without increasing mortality.' );">
+            Submit
+          </button>
+          <div id="C3fb" class="feedback"></div>
+        </div>
+
+        <div class="q">
+          <p class="qtitle">Q4 – What approach to preventive medications in adults with limited life expectancy is appropriate?</p>
+
+          <label><input type="radio" name="C4" value="A"> A. Maintain all oral preventive medications until death</label>
+          <label><input type="radio" name="C4" value="B"> B. Prioritise symptom control, deprescribe non-essential meds, convert essential meds to non-oral routes</label>
+          <label><input type="radio" name="C4" value="C"> C. Switch all oral meds to IV to maintain targets</label>
+          <label><input type="radio" name="C4" value="D"> D. Continue statins and antihypertensives as routine</label>
+
+          <button onclick="checkRadio('C4','C4','B','C4fb',
+            '<b>Correct.</b><br>Guidance emphasises individualised deprescribing based on prognosis and time-to-benefit; prioritise comfort, stop non-essential preventive meds, and convert essential symptom meds to feasible routes.',
+            '<b>Incorrect.</b><br>The correct approach is symptom-first: deprescribe non-essential preventive meds and convert essential medicines to non-oral routes.' );">
+            Submit
+          </button>
+          <div id="C4fb" class="feedback"></div>
+        </div>
+
+        <div class="scoreRow">
+          <button onclick="calcCase('C',4,'Cscore')">Calculate Case C Score</button>
+          <div id="Cscore" class="scoreBox"></div>
+        </div>
+      </div>
+
+      <!-- ===================== CASE D ===================== -->
+      <div class="card">
+        <h2>Case D – Anticholinergic Cognitive Burden (ACB)</h2>
+
+        <div class="meta">
+          <div><b>Patient:</b> Mrs D, 79</div>
+          <div><b>Diagnosis:</b> Metastatic pancreatic cancer, prognosis &lt; 3 months</div>
+          <div><b>PMH:</b> Mild depression, urinary incontinence, hypertension, recurrent UTI, occasional pruritis, <b>recurrent nosebleed episodes</b></div>
+          <div><b>BP:</b> 180/115</div>
+          <div><b>Medications:</b> Amitriptyline | Amlodipine | Oxybutynin | Trimethoprim | Diphenhydramine | Lorazepam | Oxycodone MR | Senna | Enoxaparin</div>
+        </div>
+
+        <div class="q">
+          <p class="qtitle">Q1 – Deprescribing targets: Which high-ACB / high-risk medications should be considered for deprescribing?</p>
+          <div class="small">Select all that apply.</div>
+
+          <label><input type="checkbox" name="D1" value="amitriptyline"> Amitriptyline</label>
+          <label><input type="checkbox" name="D1" value="amlodipine"> Amlodipine</label>
+          <label><input type="checkbox" name="D1" value="oxybutynin"> Oxybutynin</label>
+          <label><input type="checkbox" name="D1" value="trimethoprim"> Trimethoprim</label>
+          <label><input type="checkbox" name="D1" value="diphenhydramine"> Diphenhydramine</label>
+          <label><input type="checkbox" name="D1" value="lorazepam"> Lorazepam</label>
+          <label><input type="checkbox" name="D1" value="oxycodone"> Oxycodone MR</label>
+          <label><input type="checkbox" name="D1" value="senna"> Senna</label>
+          <label><input type="checkbox" name="D1" value="enoxaparin"> Enoxaparin</label>
+
+          <button onclick="checkCheckbox('D1','D1',['amitriptyline','oxybutynin','diphenhydramine','enoxaparin'],'D1fb',
+            '<b>Correct.</b><br>Amitriptyline, oxybutynin and diphenhydramine have high anticholinergic burden (delirium, constipation, urinary retention, falls). <b>Anticoagulants are unsafe to continue in cases of active bleeding.</b> Given recurrent epistaxis, review/withhold enoxaparin and reassess indication vs risk.',
+            '<b>Not quite.</b><br>Focus on the high anticholinergic agents and the active bleeding risk: <b>anticoagulants are unsafe to continue in cases of active bleeding.</b>' );">
+            Submit
+          </button>
+          <div id="D1fb" class="feedback"></div>
+        </div>
+
+        <div class="q">
+          <p class="qtitle">Q2 – ACB calculation: What is Mrs D’s total ACB score?</p>
+
+          <label><input type="radio" name="D2" value="1to4"> 1–4</label>
+          <label><input type="radio" name="D2" value="4to8"> 5–8</label>
+          <label><input type="radio" name="D2" value="8to12"> 9–12</label>
+
+          <button onclick="checkRadio('D2','D2','8to12','D2fb',
+            '<b>Correct (8–12).</b><br>Amitriptyline (3) + Oxybutynin (3) + Diphenhydramine (3) + Lorazepam (1) + Oxycodone (1) = 11. This is clinically significant (≥3) and increases risk of confusion, falls and adverse outcomes.',
+            '<b>Incorrect.</b><br>Recalculate: 3 + 3 + 3 + 1 + 1 = 11 → falls within 9–12.' );">
+            Submit
+          </button>
+          <div id="D2fb" class="feedback"></div>
+        </div>
+
+        <div class="q">
+          <p class="qtitle">Q3 – For older adults with dementia and high ACB, NICE recommends:</p>
+
+          <label><input type="radio" name="D3" value="A"> A. Continue high-ACB drugs if previously prescribed</label>
+          <label><input type="radio" name="D3" value="B"> B. Gradually deprescribe high-ACB meds to reduce delirium, falls, and cognitive decline</label>
+          <label><input type="radio" name="D3" value="C"> C. Increase doses to manage behavioural symptoms</label>
+          <label><input type="radio" name="D3" value="D"> D. Only deprescribe if patient is in a care home</label>
+
+          <button onclick="checkRadio('D3','D3','B','D3fb',
+            '<b>Correct.</b><br>Guidance supports reducing anticholinergic/sedative burden in frail older adults to reduce delirium, falls and cognitive decline.',
+            '<b>Incorrect.</b><br>Recommended approach: gradual deprescribing of high-ACB drugs where possible.' );">
+            Submit
+          </button>
+          <div id="D3fb" class="feedback"></div>
+        </div>
+
+        <div class="q">
+          <p class="qtitle">Q4 – What would be the most appropriate deprescribing strategy for amitriptyline?</p>
+
+          <label><input type="radio" name="D4" value="A"> A. Stop abruptly since it is commonly well tolerated</label>
+          <label><input type="radio" name="D4" value="B"> B. Clarify indication, assess withdrawal risk, and gradually taper the dose</label>
+          <label><input type="radio" name="D4" value="C"> C. Switch immediately to another antidepressant without dose reduction</label>
+          <label><input type="radio" name="D4" value="D"> D. Continue indefinitely regardless of current indication</label>
+
+          <button onclick="checkRadio('D4','D4','B','D4fb',
+            '<b>Correct.</b><br>TCAs can cause cholinergic rebound and withdrawal if stopped suddenly; taper over weeks is usually recommended. If ongoing treatment is needed, consider switching to a lower-anticholinergic option to reduce adverse effects.',
+            '<b>Incorrect.</b><br>Best practice: clarify indication and taper gradually to reduce withdrawal/rebound.' );">
+            Submit
+          </button>
+          <div id="D4fb" class="feedback"></div>
+        </div>
+
+        <div class="scoreRow">
+          <button onclick="calcCase('D',4,'Dscore')">Calculate Case D Score</button>
+          <div id="Dscore" class="scoreBox"></div>
+        </div>
+      </div>
+
+      <div class="navRow">
+        <button onclick="prevPage()">Previous</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
